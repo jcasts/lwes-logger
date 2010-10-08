@@ -46,7 +46,8 @@ class LwesLogger < Logger
 
 
   def initialize ip_address, options={}
-    super(*options[:log_device])
+    args = [options[:log_device]].flatten
+    super(*args)
 
     @meta_event = {
       :hostname => HOSTNAME,
