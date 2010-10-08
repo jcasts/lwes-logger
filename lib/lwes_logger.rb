@@ -36,7 +36,14 @@ class LwesLogger < Logger
 
 
   ##
-  # Creates a new LwesLogger.
+  # Creates a new LwesLogger. Supports the following options:
+  # :log_device:: Supports the same arguments as Logger.new - default: nil
+  # :namespace::  Lwes root event namespace - default: "LwesLogger"
+  # :iface::      Forwarded to LWES::Event.new - default: "0.0.0.0"
+  # :port::       Forwarded to LWES::Event.new - default: 12345
+  # :heartbeat::  Forwarded to LWES::Event.new - default: 1
+  # :ttl::        Forwarded to LWES::Event.new - default: 1
+
 
   def initialize ip_address, options={}
     super(*options[:log_device])
@@ -57,7 +64,7 @@ class LwesLogger < Logger
 
   ##
   # Dump given message to the log device without any formatting.
-  # If no log device exists, return nil.
+  # Creates an LwesLogger::Any event.
 
   def << msg
     emit_log nil, msg
@@ -66,7 +73,7 @@ class LwesLogger < Logger
 
 
   ##
-  # Log to both lwes and the log file, if given
+  # Log to both lwes and the log device, if given.
 
   def add severity, message=nil, progname=nil, &block
     return true if severity < @level
