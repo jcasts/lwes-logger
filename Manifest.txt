@@ -1,0 +1,7 @@
+.autotest
+History.txt
+Manifest.txt
+README.txt
+Rakefile
+lib/lwes_logger.rb
+test/test_lwes_logger.rb
