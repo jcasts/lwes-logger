@@ -14,6 +14,7 @@ class LwesLogger < Logger
 
   HOSTNAME = Socket.gethostname
   FORMAT   = "%s [%s#%d] %5s -- %s: %s\n"
+  DATETIME_FORMAT = "%b %d %H:%M:%S"
 
 
   # The default event data to pass along with the lwes event.
@@ -34,6 +35,11 @@ class LwesLogger < Logger
   # The lwes event emitter.
   attr_reader :emitter
 
+  # Format of the timestamp in the lwes events.
+  # Note: If using a custom formatter, this property will only
+  # apply to lwes events. Defaults to DATETIME_FORMAT.
+  attr_accessor :datetime_format
+
 
   ##
   # Creates a new LwesLogger. Supports the following options:
@@ -53,6 +59,8 @@ class LwesLogger < Logger
       :hostname => HOSTNAME,
       :pid      => $$.to_s
     }
+
+    @datetime_format = DATETIME_FORMAT
 
     @full_logs_event = "Full"
     @full_logs_only  = false
@@ -120,7 +128,7 @@ class LwesLogger < Logger
       :message   => message.to_s.gsub(/\e\[.*?m/, ''),
       :progname  => progname.to_s,
       :severity  => severity,
-      :timestamp => Time.now.strftime("%b %d %H:%M:%S"),
+      :timestamp => Time.now.strftime(@datetime_format),
       :event_id  => event_id
 
     data = data.dup
@@ -144,7 +152,7 @@ class LwesLogger < Logger
   def call_format severity, time, progname, message
     FORMAT % [
       HOSTNAME,
-      time.strftime("%b %d %H:%M:%S"),
+      time.strftime(@datetime_format),
       $$,
       severity,
       progname,
