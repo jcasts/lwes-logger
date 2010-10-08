@@ -44,11 +44,12 @@ class LwesLogger < Logger
   ##
   # Creates a new LwesLogger. Supports the following options:
   # :log_device:: Supports the same arguments as Logger.new - default: nil
-  # :namespace::  Lwes root event namespace - default: "LwesLogger"
-  # :iface::      Forwarded to LWES::Event.new - default: "0.0.0.0"
-  # :port::       Forwarded to LWES::Event.new - default: 12345
-  # :heartbeat::  Forwarded to LWES::Event.new - default: 1
-  # :ttl::        Forwarded to LWES::Event.new - default: 1
+  # :namespace::        Lwes root event namespace - default: "LwesLogger"
+  # :datetime_format::  Timestamp format in lwes logs - default: DATETIME_FORMAT
+  # :iface::            Forwarded to LWES::Event.new - default: "0.0.0.0"
+  # :port::             Forwarded to LWES::Event.new - default: 12345
+  # :heartbeat::        Forwarded to LWES::Event.new - default: 1
+  # :ttl::              Forwarded to LWES::Event.new - default: 1
 
 
   def initialize ip_address, options={}
@@ -60,7 +61,7 @@ class LwesLogger < Logger
       :pid      => $$.to_s
     }
 
-    @datetime_format = DATETIME_FORMAT
+    @datetime_format = options[:datetime_format] || DATETIME_FORMAT
 
     @full_logs_event = "Full"
     @full_logs_only  = false
