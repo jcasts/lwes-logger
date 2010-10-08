@@ -58,7 +58,7 @@ class LwesLogger < Logger
     @full_logs_only  = false
 
     @formatter  = method(:call_format)
-    @namespace  = _camelize options[:namespace] || "LwesLogger"
+    @namespace  = camelize options[:namespace] || "LwesLogger"
     @emitter    = lwes_emitter ip_address, options
   end
 
@@ -91,6 +91,20 @@ class LwesLogger < Logger
   # pass additional data to the emitted event.
 
   def emit_log severity, message=nil, progname=nil, data={}, &block
+    event_hash = build_log_event severity, message, progname, data, &block
+
+    dump_event = [@namespace, @full_logs_event].join("::")
+    @emitter.emit dump_event, event_hash if @full_logs_event
+
+    event_name = [@namespace, event_hash[:severity].capitalize].join("::")
+    @emitter.emit event_name, event_hash unless @full_logs_only
+  end
+
+
+  ##
+  # Creates an lwes event hash with log data.
+
+  def build_log_event severity, message=nil, progname=nil, data={}, &block
     severity ||= UNKNOWN
     severity = format_severity(severity)
 
@@ -112,11 +126,7 @@ class LwesLogger < Logger
     data = data.dup
     data.each{|k, v| event_hash[k] = v.to_s}
 
-    dump_event = [@namespace, @full_logs_event].join("::")
-    @emitter.emit dump_event, event_hash if @full_logs_event
-
-    event_name = [@namespace, severity.capitalize].join("::")
-    @emitter.emit event_name, event_hash
+    event_hash
   end
 
 
@@ -124,7 +134,7 @@ class LwesLogger < Logger
   # Set the emitter namespace.
 
   def namespace= str
-    @namespace = _camelize str
+    @namespace = camelize str
   end
 
 
@@ -156,7 +166,7 @@ class LwesLogger < Logger
   end
 
 
-  def _camelize string
+  def camelize string
     string.gsub(/(_|^)./i){|s| s[-1..-1].upcase}
   end
 end

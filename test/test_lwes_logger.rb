@@ -25,10 +25,17 @@ class TestLwesLogger < Test::Unit::TestCase
       with(@emitter_hash).and_return(@mock_emitter)
 
     @logger = LwesLogger.new "127.0.0.1"
+
+    @time = Time.now
+    flexmock(Time).should_receive(:now).and_return(@time)
+
+    flexmock(UUIDTools::UUID).should_receive(:timestamp_create).
+      and_return("uuid_timestamp")
   end
 
 
   def teardown
+    @mock_emitter.reset_emitted if @mock_emitter.respond_to? :reset_emitted
     FileUtils.rm_rf @tmpdir
   end
 
@@ -102,8 +109,197 @@ class TestLwesLogger < Test::Unit::TestCase
   end
 
 
+  def test_append
+    event_hash = @logger.build_log_event nil, "test log"
+
+    log_device = StringIO.new("")
+
+    @lwes_emitter_class.should_receive(:new).
+      with(@emitter_hash.merge(:log_device => log_device)).
+      and_return(@mock_emitter)
+
+    add_emit_hooks @mock_emitter
+    logger = LwesLogger.new "127.0.0.1", :log_device => log_device
+
+    logger << "test log"
+
+    assert_equal 2, @mock_emitter.emitted.length
+    assert_equal ["LwesLogger::Full", event_hash], @mock_emitter.emitted[0]
+    assert_equal ["LwesLogger::Any", event_hash], @mock_emitter.emitted[1]
+
+    log_device.rewind
+    assert_equal "test log", log_device.read
+  end
+
+
+  def test_add
+    event_hash = @logger.build_log_event Logger::DEBUG, "test log"
+
+    log_device = StringIO.new("")
+
+    @lwes_emitter_class.should_receive(:new).
+      with(@emitter_hash.merge(:log_device => log_device)).
+      and_return(@mock_emitter)
+
+    add_emit_hooks @mock_emitter
+    logger = LwesLogger.new "127.0.0.1", :log_device => log_device
+
+    logger.add Logger::DEBUG, "test log"
+    args = [logger.send(:format_severity, Logger::DEBUG),
+            @time, nil, "test log"]
+
+    log_line = logger.send :format_message, *args
+
+    assert_equal 2, @mock_emitter.emitted.length
+    assert_equal ["LwesLogger::Full", event_hash], @mock_emitter.emitted[0]
+    assert_equal ["LwesLogger::Debug", event_hash], @mock_emitter.emitted[1]
+
+    log_device.rewind
+    assert_equal log_line, log_device.read
+  end
+
+
   def test_namespace=
     @logger.namespace = "test_namespace"
     assert_equal "TestNamespace", @logger.namespace
+  end
+
+
+  def test_build_log_event
+    hash = @logger.build_log_event Logger::DEBUG,
+                                   "log message",
+                                   "log prog",
+                                   :extra_data => "data"
+
+    assert_equal({
+      :extra_data => "data",
+      :message    => "log message",
+      :progname   => "log prog",
+      :timestamp  => @time.strftime("%b %d %H:%M:%S"),
+      :severity   => "DEBUG",
+      :event_id   => "LwesLogger::Debug-uuid_timestamp",
+      :hostname   => Socket.gethostname,
+      :pid        => $$.to_s
+    }, hash)
+  end
+
+
+  def test_build_log_event_overrides
+    hash = @logger.build_log_event Logger::DEBUG,
+                                   "log message",
+                                   "log prog",
+                                   :message => "overriden",
+                                   :pid     => 0
+
+    assert_equal "0", hash[:pid]
+    assert_equal "overriden", hash[:message]
+  end
+
+
+  def test_build_log_event_message
+    hash = @logger.build_log_event Logger::DEBUG, "log message", "log prog" do
+             "msg from block"
+           end
+    assert_equal "log message", hash[:message]
+
+    hash = @logger.build_log_event Logger::DEBUG, nil, "log prog" do
+             "msg from block"
+           end
+    assert_equal "msg from block", hash[:message]
+
+    hash = @logger.build_log_event Logger::DEBUG, nil, "log prog"
+    assert_equal "log prog", hash[:message]
+  end
+
+
+  def test_build_log_event_severity
+    hash = @logger.build_log_event nil
+    assert_equal "ANY", hash[:severity]
+  end
+
+
+  def test_build_log_event_progname
+    @logger.instance_variable_set("@progname", "inst progname")
+    hash = @logger.build_log_event Logger::DEBUG
+    assert_equal "inst progname", hash[:progname]
+  end
+
+
+  def test_emit_log
+    event_hash = @logger.build_log_event Logger::DEBUG, "log msg"
+
+    @mock_emitter.should_receive(:emit).with "LwesLogger::Full", event_hash
+    @mock_emitter.should_receive(:emit).with "LwesLogger::Debug", event_hash
+
+    @logger.emit_log Logger::DEBUG, "log msg"
+  end
+
+
+  def test_emit_log_full_only
+    @logger.full_logs_only = true
+    event_hash = @logger.build_log_event Logger::DEBUG, "log msg"
+
+    add_emit_hooks @mock_emitter
+    @logger.emit_log Logger::DEBUG, "log msg"
+
+    assert_equal 1, @mock_emitter.emitted.length
+    assert_equal ["LwesLogger::Full", event_hash], @mock_emitter.emitted.first
+  end
+
+
+  def test_emit_log_severity_only
+    @logger.full_logs_event = false
+    event_hash = @logger.build_log_event Logger::DEBUG, "log msg"
+
+    add_emit_hooks @mock_emitter
+    @logger.emit_log Logger::DEBUG, "log msg"
+
+    assert_equal 1, @mock_emitter.emitted.length
+    assert_equal ["LwesLogger::Debug", event_hash], @mock_emitter.emitted.first
+  end
+
+
+  def test_call_format
+    time = Time.now
+    timestamp = time.strftime("%b %d %H:%M:%S")
+
+    host = Socket.gethostname
+    sev  = "ERROR"
+    prog = "prog"
+    msg  = "message"
+
+    results = @logger.send(:call_format, sev, time, prog, msg)
+    expected = "#{host} [#{timestamp}##{$$}] #{sev} -- #{prog}: #{msg}\n"
+
+    assert_equal expected, results
+  end
+
+
+  def test_camelize
+    assert_equal "TestThing",  @logger.send(:camelize, "test_thing")
+    assert_equal "Test-thing", @logger.send(:camelize, "test-thing")
+    assert_equal "Test-Thing", @logger.send(:camelize, "Test-_thing")
+    assert_equal "Test_thing", @logger.send(:camelize, "test__thing")
+    assert_equal "TESTTHING",  @logger.send(:camelize, "TEST_THING")
+    assert_equal "TestThing",  @logger.send(:camelize, "TestThing")
+  end
+
+
+  private
+
+  def add_emit_hooks emitter
+    emitter.instance_eval do
+      def emit *args
+        @emitted ||= []
+        @emitted << args
+      end
+      def emitted
+        @emitted
+      end
+      def reset_emitted
+        @emitted = []
+      end
+
+    end
   end
 end
