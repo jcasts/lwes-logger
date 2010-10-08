@@ -10,16 +10,21 @@ class TestLwesLogger < Test::Unit::TestCase
     @tmpdir = File.join Dir.tmpdir, "lwes_logger_tests_#{$$}"
     FileUtils.mkdir_p @tmpdir
 
-    @mock_emitter = flexmock LWES::Emitter.new(
+    @emitter_hash = {
       :address    => "127.0.0.1",
       :iface      => '0.0.0.0',
       :port       => 12345,
       :heartbeat  => 1,
       :ttl        => 1
-    )
+    }
+
+    @mock_emitter = flexmock LWES::Emitter.new(@emitter_hash)
 
     @lwes_emitter_class = flexmock LWES::Emitter
-    @lwes_emitter_class.should_receive(:new).and_return(@mock_emitter)
+    @lwes_emitter_class.should_receive(:new).
+      with(@emitter_hash).and_return(@mock_emitter)
+
+    @logger = LwesLogger.new "127.0.0.1"
   end
 
 
@@ -40,8 +45,14 @@ class TestLwesLogger < Test::Unit::TestCase
 
 
   def test_init_log_device
-    logger = LwesLogger.new "127.0.0.1",
-      :log_device => ["#{@tmpdir}/test.log", 10, 10241024]
+    log_device = ["#{@tmpdir}/test.log", 10, 10241024]
+
+    @lwes_emitter_class.should_receive(:new).
+      with(@emitter_hash.merge(:log_device => log_device)
+      ).and_return(@mock_emitter)
+
+    logger = LwesLogger.new "127.0.0.1", :log_device => log_device
+
     logdev = logger.instance_variable_get("@logdev")
 
     assert Logger::LogDevice === logdev
@@ -54,6 +65,10 @@ class TestLwesLogger < Test::Unit::TestCase
   def test_init_log_device_io
     logfile = File.open("#{@tmpdir}/test.log", "w+")
 
+    @lwes_emitter_class.should_receive(:new).
+      with(@emitter_hash.merge(:log_device => logfile)
+      ).and_return(@mock_emitter)
+
     logger = LwesLogger.new "127.0.0.1", :log_device => logfile
     logdev = logger.instance_variable_get("@logdev")
 
@@ -61,4 +76,34 @@ class TestLwesLogger < Test::Unit::TestCase
     logfile.close
   end
 
+
+  def test_init_emitter_options
+    @lwes_emitter_class.should_receive(:new).with({
+      :address    => "0.0.0.0",
+      :iface      => "244.0.0.1",
+      :port       => 54321,
+      :heartbeat  => 5,
+      :ttl        => 30
+    }).at_least.once
+
+    LwesLogger.new "0.0.0.0",
+      :iface      => "244.0.0.1",
+      :port       => 54321,
+      :heartbeat  => 5,
+      :ttl        => 30
+  end
+
+
+  def test_init_namespace
+    @lwes_emitter_class.should_receive(:new).and_return @mock_emitter
+
+    logger = LwesLogger.new "127.0.0.1", :namespace => "test_namespace"
+    assert_equal "TestNamespace", logger.namespace
+  end
+
+
+  def test_namespace=
+    @logger.namespace = "test_namespace"
+    assert_equal "TestNamespace", @logger.namespace
+  end
 end
