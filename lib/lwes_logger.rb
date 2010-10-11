@@ -74,7 +74,7 @@ class LwesLogger < Logger
 
   ##
   # Dump given message to the log device without any formatting.
-  # Creates an LwesLogger::Any event.
+  # Creates an LwesLogger::Any event.@options[:request].
 
   def << msg
     emit_log nil, msg
@@ -132,8 +132,12 @@ class LwesLogger < Logger
       :timestamp => Time.now.strftime(@datetime_format),
       :event_id  => event_id
 
-    data = data.dup
-    data.each{|k, v| event_hash[k] = v.to_s}
+    event_hash.merge! data
+
+    event_hash.each do |key, val|
+      val = val.call if Proc === val
+      event_hash[key] = val.to_s
+    end
 
     event_hash
   end
@@ -144,6 +148,15 @@ class LwesLogger < Logger
 
   def namespace= str
     @namespace = camelize str
+  end
+
+
+  ##
+  # Access the meta-event hash to set default values. If given a key and block,
+  # the block will be run on every log output.
+
+  def meta_event_attr key, value=nil, &block
+    @meta_event[key] = value || (block if block_given?)
   end
 
 

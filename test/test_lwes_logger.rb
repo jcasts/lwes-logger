@@ -225,6 +225,19 @@ class TestLwesLogger < Test::Unit::TestCase
   end
 
 
+  def test_build_log_event_proc_data
+    @logger.meta_event_attr :test1 do
+      "value1"
+    end
+
+    block = lambda{:value2}
+    hash = @logger.build_log_event nil, nil, nil, :test2 => block
+
+    assert_equal "value1", hash[:test1]
+    assert_equal "value2", hash[:test2]
+  end
+
+
   def test_emit_log
     event_hash = @logger.build_log_event Logger::DEBUG, "log msg"
 
@@ -259,6 +272,23 @@ class TestLwesLogger < Test::Unit::TestCase
   end
 
 
+  def test_meta_event_attr
+    @logger.meta_event_attr :test1, "value1"
+
+    @logger.meta_event_attr :test2 do
+      "value2"
+    end
+
+    @logger.meta_event_attr :test3, "value3" do
+      "not this value!"
+    end
+
+    assert_equal "value1", @logger.meta_event[:test1]
+    assert_equal "value2", @logger.meta_event[:test2].call
+    assert_equal "value3", @logger.meta_event[:test3]
+  end
+
+
   def test_call_format
     time = Time.now
     timestamp = time.strftime("%b %d %H:%M:%S")
@@ -289,13 +319,18 @@ class TestLwesLogger < Test::Unit::TestCase
 
   def add_emit_hooks emitter
     emitter.instance_eval do
+      undef emit
       def emit *args
         @emitted ||= []
         @emitted << args
       end
+
+      undef emitted if defined?(emitted)
       def emitted
         @emitted
       end
+
+      undef reset_emitted if defined?(reset_emitted)
       def reset_emitted
         @emitted = []
       end
