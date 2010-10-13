@@ -3,7 +3,7 @@ require 'logger'
 
 require 'rubygems'
 require 'lwes'
-require 'uuidtools'
+require 'uuid'
 
 ##
 # Lwes based ruby logger for real-time logging.
@@ -122,8 +122,7 @@ class LwesLogger < Logger
     message  ||= progname
 
     event_id =
-      "#{@namespace}::#{severity.capitalize}-" +
-      UUIDTools::UUID.timestamp_create.to_s
+      "#{@namespace}::#{severity.capitalize}-" + UUID.generate
 
     event_hash = @meta_event.merge \
       :message   => message.to_s.gsub(/\e\[.*?m/, ''),
