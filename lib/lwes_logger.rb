@@ -10,7 +10,7 @@ require 'uuid'
 
 class LwesLogger < Logger
 
-  VERSION = '1.0.2'
+  VERSION = '1.0.3'
 
   HOSTNAME = Socket.gethostname
   FORMAT   = "%s [%s#%d] %5s -- %s: %s\n"

@@ -29,7 +29,7 @@ class TestLwesLogger < Test::Unit::TestCase
     @time = Time.now
     flexmock(Time).should_receive(:now).and_return(@time)
 
-    flexmock(UUIDTools::UUID).should_receive(:timestamp_create).
+    flexmock(UUID).should_receive(:generate).
       and_return("uuid_timestamp")
   end
 

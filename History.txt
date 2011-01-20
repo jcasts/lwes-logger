@@ -1,3 +1,9 @@
+=== 1.0.3 / 2011-01-20
+
+* Bugfixes:
+
+  * Moved from UUIDTools to UUID
+
 === 1.0.2 / 2010-10-12
 
 * Bugfixes:
