@@ -1,6 +1,6 @@
 = lwes-logger
 
-* http://github.com/yaksnrainbows/lwes-logger
+* http://yaks.me/lwes-logger
 
 == DESCRIPTION:
 

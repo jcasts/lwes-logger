@@ -4,7 +4,7 @@ require 'rubygems'
 require 'hoe'
 
 Hoe.spec 'lwes-logger' do
-  developer('Jeremie Castagna', 'jcastagna@attinteractive.com')
+  developer('Jeremie Castagna', 'yaksnrainbows@gmail.com')
 
   self.extra_deps << ['lwes', '~> 0.6']
   self.extra_deps << ['uuid', '~> 2']
